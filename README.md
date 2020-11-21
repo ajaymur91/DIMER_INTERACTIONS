@@ -13,12 +13,6 @@ Calculate dimer interactions
   ```
   conda install -c openbabel openbabel
   ```
-  
-# Optional tab complete
-  ```
-  source gmx-completion.bash
-  source gmx-completion-gmx.bash
-  ```
 # Usage
   ```
   conda activate gmx_plumed 
