@@ -1,0 +1,26 @@
+# How i installed "plumed patched" gromacs:
+
+# Install anaconda or miniconda (preferred)
+# or load "module load anaconda"
+
+conda create -n gmx_plumed python=2.7  #(some of the older alchemical_analysis packages work only with 2.7)
+conda activate gmx_plumed
+conda install -c ajaymur91 -c conda-forge plumed   # plumed 2.6.1
+conda install -c ajaymur91 -c conda-forge gromacs  # gromacs 2019.6, plumed patched version, using conda-build and passed 37/37 regression tests, simd=sse4.1, no mpi
+conda install -c openbabel openbabel
+
+source gmx-completion.bash
+source gmx-completion-gmx.bash
+
+# Usage
+# module load anaconda
+conda activate gmx_plumed
+
+# tab complete commands
+# source gmx-completion.bash
+# source gmx-completion-gmx.bash
+
+# Deactivate after done
+# conda deactivate
+
+# This script can be automated later
