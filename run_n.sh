@@ -10,27 +10,28 @@ export PLUMED_MAXBACKUP=-1  # Unlimited backups
 ###############################
 
 #source gmx_plumed/bin/activate 
+# Edit inputs below
 
 #Ion 
-Ion=LI
-Ion_q=+1
+Ion=TFSI
+Ion_q=-1
 
 #Solvent
 Solv=EC
 Solv_q=0
 Tot_q=$(($Ion_q+$Solv_q))
 
-#Central_Atom
-CA=LI
+#Solute_central_Atom
+CA=N1
 
-#Solvent_Atom 
-SA=O2
+#Solvent_binding_Atom 
+SA=C4
 
 #Number of Solv
 n=4 
 
 #Inner shell radius (nm)
-R0=0.3
+R0=0.6
 
 #FUNCTIONAL and BASIS SET
 FUNCTIONAL=MP2
@@ -128,7 +129,7 @@ EOF
 
 # Start from Ion.gro and insert waters and generate force-field
 cp ion.top system.top
-gmx insert-molecules -f struct/"$Ion".gro -ci struct/$Solv.gro -o IonW.gro -box 1 1 1 -nmol "$n" -try 1000 -scale 0.1 #&>> #/dev/null
+gmx insert-molecules -f struct/"$Ion".gro -ci struct/$Solv.gro -o IonW.gro -box 1 1 1 -nmol "$n" -try 1000 -scale 0.1 &> /dev/null
 cat << EOF >> system.top
 $Solv   $n
 EOF
@@ -137,11 +138,8 @@ EOF
 ###############################
 
 # Make index and plumed.dat ( to enforce QCT criterion )
-#echo -e "a $CA \n a $SA \n q" | gmx make_ndx -f IonW.gro #&>> #/dev/null
-gmx select -f IonW.gro -s IonW.gro -on CA.ndx -select "atomname $CA"
-gmx select -f IonW.gro -s IonW.gro -on SA.ndx -select "atomname $SA"
-
-#&>> #/dev/null
+gmx select -f IonW.gro -s IonW.gro -on CA.ndx -select "atomname $CA" &> /dev/null
+gmx select -f IonW.gro -s IonW.gro -on SA.ndx -select "atomname $SA" &> /dev/null
 
 cat << EOF > plumed.dat
 CA: GROUP NDX_FILE=CA.ndx NDX_GROUP=atomname_$CA
@@ -164,18 +162,18 @@ echo "PRINT ARG=(d[1-$n]),cn FILE=COLVAR STRIDE=1000" >> plumed.dat
 
 # Minimize
 echo -e "\n Run Minimization $Ion - $n $Solv \n"
-gmx grompp -f min.mdp -c IonW.gro -p system.top -o min.tpr #&>> #/dev/null
-gmx mdrun -deffnm min -nsteps 1000000 -plumed plumed.dat #&>> #/dev/null
+gmx grompp -f min.mdp -c IonW.gro -p system.top -o min.tpr  &> /dev/null
+gmx mdrun -deffnm min -nsteps 1000000 -plumed plumed.dat  &> /dev/null
 
 # Make box bigger (does not really matter - but do it anyway to be safe)
-gmx editconf -f min.gro -box 10 10 10 -o min2.gro #&>> #/dev/null
+gmx editconf -f min.gro -box 10 10 10 -o min2.gro &> /dev/null
 
 ###############################
 
 # Md (100 ps)
  echo -e "\n Run MD - $Ion - $n $Solv \n"
- gmx grompp -f md.mdp -c min2.gro -p system.top -o md.tpr #&>> #/dev/null
- gmx mdrun -deffnm md -nsteps $nsteps #&>> #/dev/null
+ gmx grompp -f md.mdp -c min2.gro -p system.top -o md.tpr &> /dev/null
+ gmx mdrun -deffnm md -nsteps $nsteps &> /dev/null
 
 ###############################
 
@@ -190,9 +188,9 @@ b=$(gmx check -f md.trr 2> /dev/stdout | grep "Step   " | awk '{print $2*$3/2}')
 
 for i in $(tail -n 1 SA.ndx)
 do
-	gmx select -f md.gro -s md.tpr -on "$k".ndx -select "resname $Ion || same resnr as atomnr $i"
+	gmx select -f md.gro -s md.tpr -on "$k".ndx -select "resname $Ion || same resnr as atomnr $i" &> /dev/null
 	echo "Extract configs -> gro/$p"
-	gmx trjconv -f md.trr -b $b -s md.tpr -vel no -o gro/"$k"-.gro -sep -n "$k".ndx -dt 2
+	gmx trjconv -f md.trr -b $b -s md.tpr -vel no -o gro/"$k"-.gro -sep -n "$k".ndx -dt 2 &> /dev/null
 	k=$(($k+1))
 done
 
@@ -225,7 +223,6 @@ do
 	echo "(fragment=2)" >> fragment
 done
 
-#N=$(ls -lth xyz/*.xyz | wc -l)
 
 # Iterate over all xyz/*.xyz and make com/*.com
 for k in $(ls gro/*.gro | cut -d '.' -f1| cut -d '/' -f2)
@@ -253,7 +250,7 @@ cat << EOF >> 1.top
 $Solv   1
 EOF
 
-gmx grompp -f min.mdp -c gro/"$k".gro -p 1.top -o min.tpr -pp gro/nrexcl.top #&>> #/dev/null
+gmx grompp -f min.mdp -c gro/"$k".gro -p 1.top -o min.tpr -pp gro/nrexcl.top &> /dev/null
 
 # First, edit gro/nrexcl.top to do the following 3 things
 
@@ -294,9 +291,9 @@ cd gro
 for i in $(ls *.gro | cut -d '.' -f1) #`seq 1 $Ngro`
 do
 	echo "Calc FF Energy $i.gro "
-        gmx grompp -f sp.mdp -c $i.gro -p nrexcl.top -o $i.tpr #&>> #/dev/null
-        gmx mdrun -deffnm $i -rerun $i.gro #&>> #/dev/null
-        echo 4 | gmx energy -f $i.edr -o $i.xvg #&>> #/dev/null
+        gmx grompp -f sp.mdp -c $i.gro -p nrexcl.top -o $i.tpr &> /dev/null
+        gmx mdrun -deffnm $i -rerun $i.gro &> /dev/null
+        echo 4 | gmx energy -f $i.edr -o $i.xvg &> /dev/null
 	tail -n 1 $i.xvg | awk '{print $2/4.184}' >> ../results/E_FF_kcal.txt
 done
 cd ..
@@ -308,3 +305,6 @@ cd ..
 rm -rf \#*
 # Remove plumed backups if any
 rm -rf \#* bck.* step*
+
+# Clean everything for fresh start
+#rm -rf com xyz gro results md.* min.* COLVAR 1.ndx 1.top 2.ndx 3.ndx 4.ndx CA.ndx SA.ndx ion.top IonW.gro fragment mdout.mdp md_prev.cpt plumed.dat min2.gro system.top
