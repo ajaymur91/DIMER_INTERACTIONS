@@ -17,5 +17,8 @@ Install anaconda or miniconda and run the following:
   cd DIMER_INTERACTIONS
   bash run_n.sh
   ```
-Currently supports LI, TFSI, BLB and EC only
+  - Creates dimer configurations from gas phase MD -> gro/
+  - Saves FF interaction energies of those configurations in results/E_FF_kcal.txt
+  - Converts gro files to gaussian input files -> com/
+  - Currently supports LI, TFSI, BLB and EC only
 
