@@ -12,8 +12,8 @@ export PLUMED_MAXBACKUP=-1  # Unlimited backups
 #source gmx_plumed/bin/activate 
 
 #Ion 
-Ion=BLB
-Ion_q=-1
+Ion=LI
+Ion_q=+1
 
 #Solvent
 Solv=EC
@@ -21,16 +21,16 @@ Solv_q=0
 Tot_q=$(($Ion_q+$Solv_q))
 
 #Central_Atom
-CA=BB
+CA=LI
 
 #Solvent_Atom 
-SA=C4
+SA=O2
 
 #Number of Solv
 n=4 
 
 #Inner shell radius (nm)
-R0=0.6
+R0=0.3
 
 #FUNCTIONAL and BASIS SET
 FUNCTIONAL=MP2
@@ -136,17 +136,21 @@ EOF
 
 ###############################
 
-# Make index.ndx and plumed.dat ( to enforce QCT criterion )
-echo -e "a $CA \n a $SA \n q" | gmx make_ndx -f IonW.gro #&>> #/dev/null
+# Make index and plumed.dat ( to enforce QCT criterion )
+#echo -e "a $CA \n a $SA \n q" | gmx make_ndx -f IonW.gro #&>> #/dev/null
+gmx select -f IonW.gro -s IonW.gro -on CA.ndx -select "atomname $CA"
+gmx select -f IonW.gro -s IonW.gro -on SA.ndx -select "atomname $SA"
+
+#&>> #/dev/null
 
 cat << EOF > plumed.dat
-CA: GROUP NDX_FILE=index.ndx NDX_GROUP=$CA
-SA: GROUP NDX_FILE=index.ndx NDX_GROUP=$SA
+CA: GROUP NDX_FILE=CA.ndx NDX_GROUP=atomname_$CA
+SA: GROUP NDX_FILE=SA.ndx NDX_GROUP=atomname_$SA
 cn: COORDINATION GROUPA=CA GROUPB=SA R_0=$R0 NN=1000000
 EOF
 
 k=0;
-for i in $(tail -n 1 index.ndx)
+for i in $(tail -n 1 SA.ndx)
 do
 k=$(($k+1))
 echo "d$k: DISTANCE ATOMS=CA,$i" >> plumed.dat
@@ -184,7 +188,7 @@ j=1
 # Begin from the middle of the trajectory
 b=$(gmx check -f md.trr 2> /dev/stdout | grep "Step   " | awk '{print $2*$3/2}')
 
-for i in $(tail -n 1 index.ndx)
+for i in $(tail -n 1 SA.ndx)
 do
 	gmx select -f md.gro -s md.tpr -on "$k".ndx -select "resname $Ion || same resnr as atomnr $i"
 	echo "Extract configs -> gro/$p"
