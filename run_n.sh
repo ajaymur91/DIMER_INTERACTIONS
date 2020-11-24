@@ -13,25 +13,27 @@ export PLUMED_MAXBACKUP=-1  # Unlimited backups
 # Edit inputs below
 
 #Ion 
-Ion=TFSI
-Ion_q=-1
+Ion=EC
+Ion_q=0
 
 #Solvent
 Solv=EC
 Solv_q=0
+
+
 Tot_q=$(($Ion_q+$Solv_q))
 
 #Solute_central_Atom
-CA=N1
+CA=C4
 
 #Solvent_binding_Atom 
-SA=C4
+SA=O2
 
 #Number of Solv
-n=4 
+n=4
 
 #Inner shell radius (nm)
-R0=0.6
+R0=0.5
 
 #FUNCTIONAL and BASIS SET
 FUNCTIONAL=MP2
@@ -41,6 +43,8 @@ BASIS_SET=aug-cc-pvdz
 nsteps=250000     #dt is set to 0.5 fs in mdp file
 
 ###############################
+# Take care of situation where Ion=Solv
+[[ "$Ion" == "$Solv" ]] && Solv2="empty" || Solv2="$Solv"
 
 cat << EOF > ion.top
 [ defaults ]
@@ -49,7 +53,7 @@ cat << EOF > ion.top
 
 #include "itp/atomtypes.itp"
 #include "itp/$Ion.itp"
-#include "itp/$Solv.itp"
+#include "itp/$Solv2.itp"
 
 [ system ]
 ; name
@@ -138,12 +142,12 @@ EOF
 ###############################
 
 # Make index and plumed.dat ( to enforce QCT criterion )
-gmx select -f IonW.gro -s IonW.gro -on CA.ndx -select "atomname $CA" &> /dev/null
-gmx select -f IonW.gro -s IonW.gro -on SA.ndx -select "atomname $SA" &> /dev/null
+gmx select -f IonW.gro -s IonW.gro -on CA.ndx -select "atomname $CA and resnr 1" &> /dev/null
+gmx select -f IonW.gro -s IonW.gro -on SA.ndx -select "atomname $SA and resnr > 1" &> /dev/null
 
 cat << EOF > plumed.dat
-CA: GROUP NDX_FILE=CA.ndx NDX_GROUP=atomname_$CA
-SA: GROUP NDX_FILE=SA.ndx NDX_GROUP=atomname_$SA
+CA: GROUP NDX_FILE=CA.ndx NDX_GROUP=atomname_${CA}_and_resnr_1
+SA: GROUP NDX_FILE=SA.ndx NDX_GROUP=atomname_${SA}_and_resnr_>_1
 cn: COORDINATION GROUPA=CA GROUPB=SA R_0=$R0 NN=1000000
 EOF
 
