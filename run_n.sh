@@ -33,7 +33,7 @@ SA=O2
 n=4
 
 #Inner shell radius (nm)
-R0=0.5
+R0=0.4
 
 #FUNCTIONAL and BASIS SET
 FUNCTIONAL=MP2
@@ -192,7 +192,7 @@ b=$(gmx check -f md.trr 2> /dev/stdout | grep "Step   " | awk '{print $2*$3/2}')
 
 for i in $(tail -n 1 SA.ndx)
 do
-	gmx select -f md.gro -s md.tpr -on "$k".ndx -select "resname $Ion || same resnr as atomnr $i" &> /dev/null
+	gmx select -f md.gro -s md.tpr -on "$k".ndx -select "resid 1 || same resnr as atomnr $i" &> /dev/null
 	echo "Extract configs -> gro/$p"
 	gmx trjconv -f md.trr -b $b -s md.tpr -vel no -o gro/"$k"-.gro -sep -n "$k".ndx -dt 2 &> /dev/null
 	k=$(($k+1))
@@ -201,6 +201,14 @@ done
 ###############################
 
 # Make .xyz (coords in Angstrom. For making gaussian input files)
+#rm -rf gro2/*
+#cp -r gro gro2
+#
+#for k in $(ls gro/*.gro | cut -d '.' -f1| cut -d '/' -f2)
+#do
+#sed 's/[^ ]\+/\L\u&/g' gro/$k.gro > gro2/$k.gro
+#done
+
 rm -rf xyz/*
 mkdir -p xyz
 cd gro 
